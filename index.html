@@ -11183,7 +11183,36 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     restoreSoundtrack();
     const description = videoError.querySelector('span');
     description.textContent = message || 'Ôi, video chưa thể phát được mất rồi ♡';
+    const actionButton = videoError.querySelector('button');
+    actionButton.textContent = 'Tiếp tục →';
+    actionButton.dataset.action = 'continue';
     videoError.classList.add('show');
+  }
+
+  function showVideoPlaybackPrompt() {
+    if (currentScene !== 'video' || !videoError) return;
+    restoreSoundtrack();
+    videoError.querySelector('span').textContent = 'Chạm vào nút bên dưới để phát video có tiếng nhé ♡';
+    const actionButton = videoError.querySelector('button');
+    actionButton.textContent = 'Phát video';
+    actionButton.dataset.action = 'play';
+    videoError.classList.add('show');
+  }
+
+  function handleVideoAction() {
+    if (videoError.querySelector('button').dataset.action !== 'play') {
+      showFinale();
+      return;
+    }
+    videoError.classList.remove('show');
+    duckSoundtrack();
+    const playResult = youtubePlayer ? youtubePlayer.playVideo() : video.play();
+    if (playResult && typeof playResult.catch === 'function') {
+      playResult.catch(error => {
+        if (error && error.name === 'NotAllowedError') showVideoPlaybackPrompt();
+        else showPlaybackError('Ôi, video chưa thể phát được mất rồi ♡');
+      });
+    }
   }
 
   function enterFinale() {
@@ -11225,7 +11254,7 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
           playerVars:{autoplay:1,controls:1,playsinline:1,rel:0},
           events:{
             onStateChange:event => { if (event.data === 0) handleVideoEnded(); },
-            onAutoplayBlocked:() => showPlaybackError('Chạm vào nút bên dưới để tiếp tục câu chuyện nhé ♡'),
+            onAutoplayBlocked:showVideoPlaybackPrompt,
             onError:() => showPlaybackError('Ôi, video chưa thể phát được mất rồi ♡')
           }
         });
@@ -11242,9 +11271,8 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     const playResult = video.play();
     if (playResult && typeof playResult.catch === 'function') {
       playResult.catch(error => {
-        showPlaybackError(error && error.name === 'NotAllowedError'
-          ? 'Chạm vào nút bên dưới để tiếp tục câu chuyện nhé ♡'
-          : 'Ôi, video chưa thể phát được mất rồi ♡');
+        if (error && error.name === 'NotAllowedError') showVideoPlaybackPrompt();
+        else showPlaybackError('Ôi, video chưa thể phát được mất rồi ♡');
       });
     }
   }
@@ -11653,7 +11681,7 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     if (name === 'gift') giftButton.addEventListener('click', beginCountdown, options);
     if (name === 'video') {
       document.getElementById('tiny-video-skip').addEventListener('click', showFinale, options);
-      document.getElementById('tiny-video-continue').addEventListener('click', showFinale, options);
+      document.getElementById('tiny-video-continue').addEventListener('click', handleVideoAction, options);
       video.addEventListener('ended', handleVideoEnded, options);
       video.addEventListener('error', handleVideoError, options);
     }
