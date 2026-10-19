@@ -7,6 +7,7 @@
 /* Performance profile: animated background adapts, story timing/audio/product links stay unchanged. */
 const BOUQUET_FLOAT_TEXT = 'Nam Anh yêu Hải Anh';
 const MUSIC_SRC = 'assets/sountrack background.mp3';
+const SHOW_VIDEO_ON_MOBILE = false;
 const PASSWORD = '270606';
 const PASS_HINT = 'Pass là ngày sinh của người đang xem nhá : 2_/06/06';
 const UNLOCK_TEXT = 'Hôm qua là anh thử lòng thui chứ sao mà anh quên được =)))';
@@ -6459,7 +6460,9 @@ html.tiny-pc-beauty-v12 #uiverse-starfield #stars3 {
       .password-key.delete {background:rgba(205,66,119,.38);color:#ffd3e2}
       .password-key.empty {visibility:hidden}
       .password-error {min-height:22px;margin:14px 0 0;color:#ff9bb5;font-size:14px}
-      .password-hint {position:absolute;top:calc(50% + min(285px,42vh));width:90%;text-align:center;color:rgba(255,245,231,.65);font-size:13px}
+      .password-hint {position:absolute;top:calc(50% + min(285px,42vh));width:90%;text-align:center;color:#ffd6e5;
+        font-size:clamp(16px,4vw,20px);font-weight:700;line-height:1.45;
+        text-shadow:0 0 7px rgba(255,182,207,.9),0 0 18px rgba(255,143,177,.72),0 0 32px rgba(255,143,177,.42)}
       .password-card.shake {animation:passwordShake .4s ease}
       @keyframes passwordShake {25%{transform:translateX(-9px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
       .password-card.unlocked {box-shadow:0 0 45px rgba(255,143,177,.7);opacity:0;transform:scale(1.06)}
@@ -10814,16 +10817,6 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
 </section>
 
 <section id="tiny-video-stage" aria-label="Video chúc mừng" aria-hidden="true">
-  <div class="final-cinema" id="tiny-cinema-frame">
-    <video id="tiny-video-player" controls playsinline preload="auto" aria-label="Video chúc mừng Hải Anh"></video>
-    <iframe id="tiny-youtube-player" title="Video chúc mừng" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen hidden></iframe>
-    <div class="final-cinema-sparkles" aria-hidden="true"><span>♡</span><span>✦</span><span>✧</span></div>
-    <div id="tiny-video-error" class="final-video-error" role="status" aria-live="polite">
-      <span>Ôi, video chưa thể phát được mất rồi ♡</span>
-      <button type="button" class="final-action" id="tiny-video-continue">Tiếp tục →</button>
-    </div>
-  </div>
-  <button type="button" class="final-video-skip" id="tiny-video-skip">Bỏ qua</button>
 </section>
 
 <section id="tiny-final-stage" class="firework-finale" aria-label="Lời chúc 20 tháng 10" aria-hidden="true">
@@ -10835,7 +10828,7 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     <p class="firework-signature" id="tiny-firework-signature"></p>
     <p class="firework-prompt" id="tiny-firework-prompt"></p>
   </div>
-  <button type="button" class="firework-replay" id="tiny-firework-replay">Xem lại video</button>
+  <button type="button" class="firework-replay" id="tiny-firework-replay" hidden>Xem lại video</button>
 </section>
 
 <script id="tiny-final-story-script">
@@ -10855,10 +10848,10 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
   const finalStage = document.getElementById('tiny-final-stage');
   const giftButton = document.getElementById('tiny-gift-button');
   const countdown = document.getElementById('tiny-countdown');
-  const video = document.getElementById('tiny-video-player');
-  const youtube = document.getElementById('tiny-youtube-player');
-  const cinema = document.getElementById('tiny-cinema-frame');
-  const videoError = document.getElementById('tiny-video-error');
+  let video = null;
+  let youtube = null;
+  let cinema = null;
+  let videoError = null;
   const fireworkCanvas = document.getElementById('tiny-firework-canvas');
   const fireworkContext = fireworkCanvas.getContext('2d');
   const fireworkCopy = document.getElementById('tiny-firework-copy');
@@ -11105,8 +11098,87 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     window.tinyMusicController?.setDucked(false);
   }
 
+  function isMobileDevice() {
+    const userAgent = navigator.userAgent;
+    const isTablet = /iPad/i.test(userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isHandheld = navigator.userAgentData?.mobile === true
+      || /Android|iPhone|iPod|Mobile/i.test(userAgent);
+    const isNarrowTouchScreen = matchMedia('(pointer: coarse)').matches
+      && Math.min(screen.width, screen.height) <= 820;
+    return isHandheld || isTablet || isNarrowTouchScreen;
+  }
+
+  function createVideoScene() {
+    if (video) return;
+
+    cinema = document.createElement('div');
+    cinema.className = 'final-cinema';
+    cinema.id = 'tiny-cinema-frame';
+
+    video = document.createElement('video');
+    video.id = 'tiny-video-player';
+    video.controls = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.setAttribute('aria-label', 'Video chúc mừng Hải Anh');
+    cinema.appendChild(video);
+
+    youtube = document.createElement('iframe');
+    youtube.id = 'tiny-youtube-player';
+    youtube.title = 'Video chúc mừng';
+    youtube.allow = 'autoplay; encrypted-media; picture-in-picture';
+    youtube.allowFullscreen = true;
+    youtube.hidden = true;
+    cinema.appendChild(youtube);
+
+    const sparkles = document.createElement('div');
+    sparkles.className = 'final-cinema-sparkles';
+    sparkles.setAttribute('aria-hidden', 'true');
+    for (const symbol of ['♡', '✦', '✧']) {
+      const sparkle = document.createElement('span');
+      sparkle.textContent = symbol;
+      sparkles.appendChild(sparkle);
+    }
+    cinema.appendChild(sparkles);
+
+    videoError = document.createElement('div');
+    videoError.id = 'tiny-video-error';
+    videoError.className = 'final-video-error';
+    videoError.setAttribute('role', 'status');
+    videoError.setAttribute('aria-live', 'polite');
+    const errorMessage = document.createElement('span');
+    errorMessage.textContent = 'Ôi, video chưa thể phát được mất rồi ♡';
+    const continueButton = document.createElement('button');
+    continueButton.type = 'button';
+    continueButton.className = 'final-action';
+    continueButton.id = 'tiny-video-continue';
+    continueButton.textContent = 'Tiếp tục →';
+    videoError.append(errorMessage, continueButton);
+    cinema.appendChild(videoError);
+
+    const skipButton = document.createElement('button');
+    skipButton.type = 'button';
+    skipButton.className = 'final-video-skip';
+    skipButton.id = 'tiny-video-skip';
+    skipButton.textContent = 'Bỏ qua';
+    videoStage.replaceChildren(cinema, skipButton);
+  }
+
+  function transitionAfterCountdown() {
+    const showVideo = !isMobileDevice() || SHOW_VIDEO_ON_MOBILE;
+    fireworkReplay.hidden = !showVideo;
+    if (showVideo) {
+      createVideoScene();
+      startVideo();
+      return;
+    }
+    enterScene('final');
+    startFireworkScene();
+  }
+
   function showPlaybackError(message) {
-    if (currentScene !== 'video') return;
+    if (currentScene !== 'video' || !video || !videoError) return;
     video.pause();
     restoreSoundtrack();
     const description = videoError.querySelector('span');
@@ -11115,9 +11187,10 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
   }
 
   function enterFinale() {
+    if (!video) return;
     video.pause();
     if (youtubePlayer) youtubePlayer.stopVideo();
-    else youtube.removeAttribute('src');
+    else youtube?.removeAttribute('src');
     enterScene('final');
     restoreSoundtrack();
     startFireworkScene();
@@ -11128,7 +11201,7 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
   }
 
   function startVideo(replay = false) {
-    if (!passwordUnlocked) return;
+    if (!passwordUnlocked || !video || !cinema || !videoError) return;
     enterScene('video');
     duckSoundtrack();
     videoError.classList.remove('show');
@@ -11192,7 +11265,7 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     });
     later(() => {
       countdown.textContent = '';
-      startVideo();
+      transitionAfterCountdown();
     }, numbers.length * 700 + 220);
   }
 
@@ -11603,9 +11676,9 @@ const SPRITES = [taoSprite(1.02, 140), taoSprite(.96, 136), taoSprite(1.08, 145)
     giftObserver.disconnect();
     sceneEvents.abort();
     stopFireworkScene();
-    video.pause();
+    video?.pause();
     if (youtubePlayer) youtubePlayer.destroy();
-    else youtube.removeAttribute('src');
+    else youtube?.removeAttribute('src');
   }, {once:true});
 })();
 </script>
